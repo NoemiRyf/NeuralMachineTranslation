@@ -111,6 +111,7 @@
     </form>
     <br>
     <h2>Translated Text:</h2>
-    <p th:text="${englishText}"></p>
+    <p th:if="${englishText}" th:text="${englishText}"></p>
+    <p th:unless="${englishText}">No translation available.</p>
 </body>
 </html>
