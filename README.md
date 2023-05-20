@@ -64,11 +64,3 @@ The deployed app will be accessible using the fully qualified domain name (FQDN)
 ## Credits
 
 This application is developed as part of the MDM Project 2 at Zurich University of Applied Sciences (ZHAW).
-
-## License
-
-This application is licensed under the MIT License. See the [LICENSE](LICENSE) file for more details.
-
-For more information, please contact the project owner.
-
-
