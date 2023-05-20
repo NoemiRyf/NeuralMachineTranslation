@@ -6,8 +6,14 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 @SpringBootApplication
 public class NeuralMachineTranslationApplication {
 
-	public static void main(String[] args) {
-		SpringApplication.run(NeuralMachineTranslationApplication.class, args);
-	}
+    /**
+     * The main method of the application.
+     * It is the entry point of the Neural Machine Translation application.
+     *
+     * @param args The command line arguments passed to the application.
+     */
+    public static void main(String[] args) {
+        SpringApplication.run(NeuralMachineTranslationApplication.class, args);
+    }
 
 }
