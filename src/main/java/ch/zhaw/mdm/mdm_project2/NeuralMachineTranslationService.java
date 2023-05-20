@@ -43,7 +43,17 @@ public class NeuralMachineTranslationService {
     private static final int EOS_TOKEN = 1;
     private static final int MAX_LENGTH = 50;
 
+    /**
+     * Translates the given French text to English.
+     *
+     * @param frenchText The French text to translate.
+     * @return The translated English text.
+     * @throws ModelException      If there is an error with the model.
+     * @throws TranslateException  If there is an error during translation.
+     * @throws IOException         If there is an error reading the resource files.
+     */
     public String translateText(String frenchText) throws ModelException, TranslateException, IOException {
+        // Load word-to-index mapping for French input
         Path path = Paths.get("src/main/resources/source_wrd2idx.json");
         Map<String, Long> wrd2idx;
         try (InputStream is = Files.newInputStream(path)) {
@@ -52,6 +62,7 @@ public class NeuralMachineTranslationService {
             wrd2idx = JsonUtils.GSON.fromJson(json, mapType);
         }
 
+        // Load index-to-word mapping for English output
         path = Paths.get("src/main/resources/target_idx2wrd.json");
         Map<String, String> idx2wrd;
         try (InputStream is = Files.newInputStream(path)) {
@@ -65,7 +76,10 @@ public class NeuralMachineTranslationService {
             try (ZooModel<NDList, NDList> encoder = getEncoderModel();
                  ZooModel<NDList, NDList> decoder = getDecoderModel()) {
 
+                // Predict the encoder output for the French text
                 NDList toDecode = predictEncoder(frenchText, encoder, wrd2idx, manager);
+
+                // Predict the decoder output for the encoder output
                 String englishText = predictDecoder(toDecode, decoder, idx2wrd, manager);
 
                 logger.info("French: {}", frenchText);
@@ -76,6 +90,13 @@ public class NeuralMachineTranslationService {
         }
     }
 
+    /**
+     * Loads the encoder model for translation.
+     *
+     * @return The loaded encoder model.
+     * @throws ModelException If there is an error loading the model.
+     * @throws IOException    If there is an error reading the model file.
+     */
     public ZooModel<NDList, NDList> getEncoderModel() throws ModelException, IOException {
         String url = "https://resources.djl.ai/demo/pytorch/android/neural_machine_translation/optimized_encoder_150k.zip";
 
@@ -88,6 +109,13 @@ public class NeuralMachineTranslationService {
         return criteria.loadModel();
     }
 
+    /**
+     * Loads the decoder model for translation.
+     *
+     * @return The loaded decoder model.
+     * @throws ModelException If there is an error loading the model.
+     * @throws IOException    If there is an error reading the model file.
+     */
     public ZooModel<NDList, NDList> getDecoderModel() throws ModelException, IOException {
         String url = "https://resources.djl.ai/demo/pytorch/android/neural_machine_translation/optimized_decoder_150k.zip";
 
@@ -100,12 +128,21 @@ public class NeuralMachineTranslationService {
         return criteria.loadModel();
     }
 
+    /**
+     * Predicts the encoder output for the given text.
+     *
+     * @param text      The input text to encode.
+     * @param model     The encoder model.
+     * @param wrd2idx   The word-to-index mapping for the input language.
+     * @param manager   The NDManager for memory management.
+     * @return The predicted encoder output.
+     */
     public NDList predictEncoder(
             String text,
             ZooModel<NDList, NDList> model,
             Map<String, Long> wrd2idx,
             NDManager manager) {
-        // maps french input to id's from french file
+        // Preprocess and map the French input to IDs
         List<String> list = Collections.singletonList(text);
         PunctuationSeparator punc = new PunctuationSeparator();
         list = punc.preprocess(list);
@@ -121,7 +158,7 @@ public class NeuralMachineTranslationService {
             inputs.add(id);
         }
 
-        // for forwarding the model
+        // Initialize tensors and buffers for forwarding the model
         Shape inputShape = new Shape(1);
         Shape hiddenShape = new Shape(1, 1, 256);
         FloatBuffer fb = FloatBuffer.allocate(256);
@@ -129,11 +166,11 @@ public class NeuralMachineTranslationService {
         long[] outputsShape = {MAX_LENGTH, HIDDEN_SIZE};
         FloatBuffer outputTensorBuffer = FloatBuffer.allocate(MAX_LENGTH * HIDDEN_SIZE);
 
-        // for using the model
+        // Initialize block and parameter store for using the model
         Block block = model.getBlock();
         ParameterStore ps = new ParameterStore();
 
-        // loops through forwarding of each word
+        // Forward each word through the model
         for (long input : inputs) {
             NDArray inputTensor = manager.create(new long[] {input}, inputShape);
             NDList inputTensorList = new NDList(inputTensor, hiddenTensor);
@@ -148,23 +185,32 @@ public class NeuralMachineTranslationService {
         return new NDList(outputsTensor, hiddenTensor);
     }
 
+    /**
+     * Predicts the decoder output given the encoder output.
+     *
+     * @param toDecode  The encoder output to decode.
+     * @param model     The decoder model.
+     * @param idx2wrd   The index-to-word mapping for the output language.
+     * @param manager   The NDManager for memory management.
+     * @return The predicted decoder output as English text.
+     */
     public String predictDecoder(
             NDList toDecode,
             ZooModel<NDList, NDList> model,
             Map<String, String> idx2wrd,
             NDManager manager) {
-        // for forwarding the model
+        // Initialize tensors and buffers for forwarding the model
         Shape decoderInputShape = new Shape(1, 1);
         NDArray inputTensor = manager.create(new long[] {0}, decoderInputShape);
         ArrayList<Integer> result = new ArrayList<>(MAX_LENGTH);
         NDArray outputsTensor = toDecode.get(0);
         NDArray hiddenTensor = toDecode.get(1);
 
-        // for using the model
+        // Initialize block and parameter store for using the model
         Block block = model.getBlock();
         ParameterStore ps = new ParameterStore();
 
-        // loops through forwarding of each word
+        // Forward each word through the model
         for (int i = 0; i < MAX_LENGTH; i++) {
             NDList inputTensorList = new NDList(inputTensor, hiddenTensor, outputsTensor);
             NDList outputs = block.forward(ps, inputTensorList, false);
@@ -186,6 +232,7 @@ public class NeuralMachineTranslationService {
             inputTensor = manager.create(new long[] {topIdx}, decoderInputShape);
         }
 
+        // Convert the predicted indices to English words
         StringBuilder sb = new StringBuilder();
         for (int i : result) {
             sb.append(idx2wrd.get(Integer.toString(i)));
