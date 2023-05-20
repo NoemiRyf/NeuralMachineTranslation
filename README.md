@@ -46,6 +46,21 @@ The application also includes the following resource files:
 
 These files are used by the `NeuralMachineTranslationService` to preprocess and postprocess the text for translation.
 
+## Azure Deployment
+
+To deploy the application to Azure using Azure Container Apps, follow these steps:
+
+1. Install and configure the Azure CLI on your system.
+2. Open your terminal.
+3. Create the container app environment by running the following command:
+   az containerapp env create --name neural-machine-translation --resource-group mdm-project2 --location switzerlandnorth
+4. Once the environment is created, create the app and deploy it to Azure by running the following command:
+   az containerapp create --name neural-machine-translation --resource-group mdm-project2 --environment neural-machine-translation --image mdm_project2-noemi/project2:latest --target-port 8081 --ingress external --query properties.configuration.ingress.fqdn
+
+Make sure to replace `mdm-project2` with your desired resource group name.
+
+The deployed app will be accessible using the fully qualified domain name (FQDN) returned by the deployment command.
+
 ## Credits
 
 This application is developed as part of the MDM Project 2 at Zurich University of Applied Sciences (ZHAW).
@@ -55,3 +70,5 @@ This application is developed as part of the MDM Project 2 at Zurich University 
 This application is licensed under the MIT License. See the [LICENSE](LICENSE) file for more details.
 
 For more information, please contact the project owner.
+
+
